@@ -1,3 +1,5 @@
+// app.js
+
 // Grab DOM elements
 const loginScreen = document.getElementById('loginScreen');
 const appScreen = document.getElementById('appScreen');
@@ -24,6 +26,12 @@ const themeToggle = document.getElementById('themeToggle');
 const sunIcon = document.getElementById('sunIcon');
 const moonIcon = document.getElementById('moonIcon');
 
+// Helper to get current user's history key
+function getUserHistoryKey() {
+    const user = localStorage.getItem('grammarAppUser') || 'guest';
+    return `grammarAppHistory_${user}`;
+}
+
 // --- 1. Login & Auth System (Local) ---
 function checkAuth() {
     const user = localStorage.getItem('grammarAppUser');
@@ -31,7 +39,7 @@ function checkAuth() {
         loginScreen.classList.add('hidden');
         appScreen.classList.remove('hidden');
         welcomeMessage.innerHTML = `Welcome back, <span class="text-blue-600 dark:text-blue-400">${user}</span>! 👋`;
-        loadHistory();
+        loadHistory(); // Load history specific to this user
     } else {
         loginScreen.classList.remove('hidden');
         appScreen.classList.add('hidden');
@@ -76,14 +84,12 @@ function updateThemeIcons(isDark) {
     }
 }
 
-// Load saved theme
 const savedTheme = localStorage.getItem('grammarAppTheme');
 if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     document.documentElement.classList.add('dark');
     updateThemeIcons(true);
 }
 themeToggle.addEventListener('click', toggleTheme);
-
 
 // --- 3. Grammar Correction Logic ---
 correctBtn.addEventListener('click', async () => {
@@ -120,20 +126,21 @@ correctBtn.addEventListener('click', async () => {
     }
 });
 
-// --- 4. History Management ---
+// --- 4. History Management (User Specific) ---
 function saveToHistory(original, corrected) {
-    let history = JSON.parse(localStorage.getItem('grammarAppHistory')) || [];
-    // Add new item to the beginning of the array
+    const historyKey = getUserHistoryKey();
+    let history = JSON.parse(localStorage.getItem(historyKey)) || [];
+    
     history.unshift({ original, corrected, time: new Date().toLocaleTimeString() });
-    // Keep only the last 10 items to prevent huge data
     if (history.length > 10) history.pop();
     
-    localStorage.setItem('grammarAppHistory', JSON.stringify(history));
+    localStorage.setItem(historyKey, JSON.stringify(history));
     loadHistory();
 }
 
 function loadHistory() {
-    let history = JSON.parse(localStorage.getItem('grammarAppHistory')) || [];
+    const historyKey = getUserHistoryKey();
+    let history = JSON.parse(localStorage.getItem(historyKey)) || [];
     historyContainer.innerHTML = '';
 
     if (history.length === 0) {
@@ -148,7 +155,6 @@ function loadHistory() {
                 <div class="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-1">${item.original}</div>
                 <div class="text-sm text-blue-600 dark:text-blue-400 line-clamp-1 mt-1">${item.corrected}</div>
             `;
-            // If user clicks a history item, it puts it back in the view
             card.addEventListener('click', () => {
                 inputText.value = item.original;
                 correctedDisplay.textContent = item.corrected;
@@ -161,7 +167,8 @@ function loadHistory() {
 
 clearHistoryBtn.addEventListener('click', () => {
     if(confirm("Are you sure you want to clear your history?")) {
-        localStorage.removeItem('grammarAppHistory');
+        const historyKey = getUserHistoryKey();
+        localStorage.removeItem(historyKey);
         loadHistory();
     }
 });
